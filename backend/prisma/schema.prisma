@@ -15,3 +15,13 @@ datasource db {
 
 //models
 
+users
+rooms
+room_participants
+sessions
+session_participants
+transcripts
+events
+ai_analysis
+reports
+topics
