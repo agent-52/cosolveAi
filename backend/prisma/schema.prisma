@@ -15,13 +15,28 @@ datasource db {
 
 //models
 
-users
-rooms
-room_participants
-sessions
-session_participants
-transcripts
-events
-ai_analysis
-reports
-topics
+// users
+// rooms
+// room_participants
+// sessions
+// session_participants
+// transcripts
+// events
+// ai_analysis
+// reports
+// topics
+
+model Users{
+  id Int @id @default(autoincrement())
+  name String
+}
+
+model Rooms{
+  id Int @unique
+  participantCount Int @default(0)
+}
+
+model RoomParticipants{
+  roomId Int
+  
+}
