@@ -12,31 +12,219 @@ datasource db {
   provider = "postgresql"
 }
 
+enum RoomStatus {
+  WAITING
+  READY
+  ACTIVE
+  COMPLETED
+}
 
-//models
+enum SessionStatus{
+  WAITING
+  READY
+  AIINTRO
+  DISCUSSION
+  AICONCLUSION
+  ANALYSIS
+  COMPLETED
+}
 
-// users
-// rooms
-// room_participants
-// sessions
-// session_participants
-// transcripts
-// events
-// ai_analysis
-// reports
-// topics
+enum EventTypes{
+  ROOM_CREATED
+  USER_JOINED
+  USER_LEFT
+  USER_READY
+  MATCH_FOUND
+  GD_STARTED
+  USER_SPOKE
+  USER_INTERRUPTED
+  GD_ENDED
+  AI_ANALYSIS_STARTED
+  REPORT_GENERATED
+}
 
-model Users{
+enum MatchMakingAction{
+  JOINED
+  MATCHED
+  LEFT
+}
+
+enum UserRole{
+  USER
+  ADMIN
+}
+
+model User{
   id Int @id @default(autoincrement())
   name String
+  email String @unique
+  password_hash String
+  role UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime?
+  isActive Boolean?
+  avatarUrl String?
+
+  rooms Room[]
+  roomParticipations RoomParticipant[]
+  sessionParticipations SessionParticipant[]
+  transcripts Transcript[]
+  userReports UserReport[]
+  matchmakingLogs MatchmakingLog[]
+  userEvents Event[]
+
+  @@index([id])
 }
 
-model Rooms{
-  id Int @unique
-  participantCount Int @default(0)
+model Room{
+  id Int @id @default(autoincrement())  
+  hostUserId Int
+  status RoomStatus
+  isPublic Boolean @default(false)
+  maxUsers Int @default(4)
+  minUsers Int @default(3)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [hostUserId], references: [id])
+
+  roomParticipants RoomParticipant[]
+  sessions Session[]
+  roomEvents Event[]
+  matchmakingLogs MatchmakingLog[]
+
+  @@index([id])
 }
 
-model RoomParticipants{
-  roomId Int
+model RoomParticipant{
+  id Int @id @default(autoincrement()) 
+  roomId Int 
+  userId Int
+  joinedAt DateTime @default(now())
+  isReady Boolean @default(false)
+  leftAt DateTime?
+
+  room Room @relation(fields: [roomId], references: [id])
+  user User @relation(fields: [userId], references: [id])
   
+  @@unique([roomId, userId])
+  @@index([roomId, userId])
 }
+
+model Session{
+  id Int @id @default(autoincrement())
+  roomId Int
+  topicId Int
+  status SessionStatus
+  startedAt DateTime?
+  endedAt DateTime?
+
+  topic Topic @relation(fields: [topicId], references: [id])
+
+  room Room @relation(fields: [roomId], references: [id])
+  sessionParticipants SessionParticipant[]
+  transcripts Transcript[]
+  userReports UserReport[]
+  sessionEvents Event[]
+
+  sessionReport SessionReport?
+
+  @@index([id])
+}
+
+model SessionParticipant{
+  id Int @id @default(autoincrement())
+  sessionId Int
+  userId Int
+  joinedAt DateTime @default(now())
+  leftAt DateTime?
+  speakingTime Int @default(0)
+  interruptionCount Int @default(0)
+  engagementScore Int?
+
+  session Session @relation(fields: [sessionId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([sessionId, userId])
+  @@index([sessionId, userId])
+}
+
+model Topic{
+  id Int @id @default(autoincrement())
+  title String
+  description String
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+
+  sessions Session[]
+}
+
+model Event{
+  id Int @id @default(autoincrement())
+  sessionId Int?
+  roomId Int?
+  userId Int?
+  eventType EventTypes
+  metadata Json
+  timeStamp DateTime @default(now())
+
+  room Room? @relation(fields: [roomId], references: [id])
+  session Session? @relation(fields: [sessionId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([sessionId, roomId])
+}
+
+model Transcript{
+  id Int @id @default(autoincrement())
+  sessionId Int
+  userId Int
+  text String
+  timestamp DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([sessionId])
+}
+
+model SessionReport{
+  id Int @id @default(autoincrement())
+  sessionId Int @unique
+  summary String
+  groupDynamics Json
+  keyPoints Json
+  createdAt DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id])
+}
+
+model UserReport{
+  id Int @id @default(autoincrement())
+  sessionId Int
+  userId Int
+  participationScore Int
+  speakingTimePercentage Int
+  strengths Json
+  weaknesses Json
+  suggestions Json
+  createdAt DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([sessionId, userId])
+}
+
+model MatchmakingLog{
+  id Int @id @default(autoincrement())
+  userId Int
+  roomId Int?
+  action MatchMakingAction
+  timestamp DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  room Room? @relation(fields: [roomId], references: [id])
+
+  @@index([userId])
+}
+
